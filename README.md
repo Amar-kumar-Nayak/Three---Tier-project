@@ -205,3 +205,13 @@ Live app: https://three-tier-project-production.up.railway.app/
 Railway: https://railway.app
 
 Neon: https://neon.tech
+
+
+<img width="1901" height="887" alt="image" src="https://github.com/user-attachments/assets/3cb97af2-a77a-4ac7-b0f4-9aeda8e4ba88" />
+
+
+
+
+build by Amar Kumar Nayak
+
+contact by email-amarkumarnayak12345@gmail.com
