@@ -10,9 +10,7 @@ const port = process.env.PORT || 3000;
 // Database connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
-        : false
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Middleware
@@ -34,7 +32,7 @@ async function initDB() {
                 max_views INTEGER,
                 views INTEGER DEFAULT 0
             );
-
+            
             CREATE INDEX IF NOT EXISTS idx_expires_at ON pastes(expires_at);
         `);
         console.log('Database initialized');
@@ -55,7 +53,7 @@ function generateId() {
 // Calculate expiry date
 function calculateExpiry(expiryOption) {
     if (!expiryOption) return null;
-
+    
     const now = new Date();
     switch (expiryOption) {
         case '10min':
@@ -71,27 +69,25 @@ function calculateExpiry(expiryOption) {
     }
 }
 
-/* =========================
-   API ROUTES
-========================= */
+// API Routes
 
 // Create paste
 app.post('/api/paste', async (req, res) => {
     try {
         const { title, content, expiry, maxViews } = req.body;
-
+        
         if (!content || content.trim().length === 0) {
             return res.status(400).json({ error: 'Content is required' });
         }
-
+        
         const id = generateId();
         const expiresAt = calculateExpiry(expiry);
-
+        
         await pool.query(
             'INSERT INTO pastes (id, title, content, expires_at, max_views) VALUES ($1, $2, $3, $4, $5)',
             [id, title || 'Untitled', content, expiresAt, maxViews]
         );
-
+        
         res.json({ id, message: 'Paste created successfully' });
     } catch (err) {
         console.error('Error creating paste:', err);
@@ -103,36 +99,36 @@ app.post('/api/paste', async (req, res) => {
 app.get('/api/paste/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
+        
         const result = await pool.query(
             'SELECT * FROM pastes WHERE id = $1',
             [id]
         );
-
+        
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Paste not found' });
         }
-
+        
         const paste = result.rows[0];
-
-        // Check expiry
+        
+        // Check if expired
         if (paste.expires_at && new Date(paste.expires_at) < new Date()) {
             await pool.query('DELETE FROM pastes WHERE id = $1', [id]);
             return res.status(410).json({ error: 'This paste has expired' });
         }
-
+        
         // Check max views
         if (paste.max_views && paste.views >= paste.max_views) {
             await pool.query('DELETE FROM pastes WHERE id = $1', [id]);
             return res.status(410).json({ error: 'This paste has reached its maximum view limit' });
         }
-
+        
         // Increment views
         await pool.query(
             'UPDATE pastes SET views = views + 1 WHERE id = $1',
             [id]
         );
-
+        
         res.json({
             id: paste.id,
             title: paste.title,
@@ -148,24 +144,7 @@ app.get('/api/paste/:id', async (req, res) => {
     }
 });
 
-/* =========================
-   FRONTEND ROUTES (FIX)
-========================= */
-
-// Homepage
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Paste view routes (/abc123)
-app.get('/:id', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-/* =========================
-   CLEANUP TASK
-========================= */
-
+// Cleanup expired pastes (run periodically)
 async function cleanupExpired() {
     try {
         await pool.query('DELETE FROM pastes WHERE expires_at < NOW()');
@@ -177,7 +156,11 @@ async function cleanupExpired() {
 // Run cleanup every hour
 setInterval(cleanupExpired, 60 * 60 * 1000);
 
-// Start server
+// Serve frontend
+app.get('/:id', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
