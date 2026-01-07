@@ -1,4 +1,4 @@
-# 📋 Pastebin Clone - Complete Railway Deployment Guide
+# 📋 Pastebin Clone - Three tire Project
 
 A full-featured Pastebin application deployed on Railway with PostgreSQL database.
 
